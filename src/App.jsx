@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
-import { fetchCustomers, fetchMessages } from './api';
-import CustomerList from './components/CustomerList';
+import { fetchCustomers, fetchMessages, fetchNextAppointment } from './api';
 import Conversation from './components/Conversation';
 import AppointmentForm from './components/AppointmentForm';
 import Login from './components/Login';
 import { supabase } from './supabase';
+import Inbox from './components/Inbox';
+import { sendMessage } from './api';
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [customers, setCustomers] = useState([]);
-  const [selected, setSelected] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [messages, setMessages] = useState([]);
 
-   // Restore session on reload
+  // Restore session on reload
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -23,39 +24,104 @@ export default function App() {
     });
   }, []);
 
-  // Load customers ONLY when logged in
+  // Load customers after login
   useEffect(() => {
     if (!session) return;
     fetchCustomers().then(setCustomers);
   }, [session]);
 
-  async function selectCustomer(c) {
-    setSelected(c);
-    const msgs = await fetchMessages(c.customer_id);
-    setMessages(msgs);
-  }
+   // Load messages when customer changes
+  useEffect(() => {
+    if (!selectedCustomer) return;
+    fetchMessages(selectedCustomer.id).then(setMessages);
+  }, [selectedCustomer]);
 
   if (!session) {
     return <Login onLogin={setSession} />;
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-      <CustomerList customers={customers} onSelect={selectCustomer} />
-      <div style={{ width: '70%' }}>
-        {selected && (
+    <div className="h-full flex">
+
+      {/* Inbox */}
+      <div className={`w-full md:w-80 ${selectedCustomer ? 'hidden md:block' : ''}`}>
+        <Inbox
+          customers={customers}
+          selectedId={selectedCustomer?.id}
+          onSelect={setSelectedCustomer}
+        />
+      </div>
+
+      {/* Conversation pane */}
+      <div className="flex-1 flex flex-col">
+        {!selectedCustomer ? (
+          <div className="flex-1 flex items-center justify-center text-gray-400">
+            Select a conversation
+          </div>
+        ) : (
           <>
             <Conversation
+              customer={selectedCustomer}
               messages={messages}
-              customerId={selected.customer_id}
-              onSend={msg => setMessages([...messages, msg])}
-            />
+              onSend={async (text, existingMsgId = null) => {
+                const tempId = existingMsgId || crypto.randomUUID();
+                const optimisticMsg = {
+                 id: tempId,
+                 content: text,
+                 direction: 'out',
+                 created_at: new Date().toISOString(),
+                 status: 'sending',
+                };
 
-            <AppointmentForm customerId={selected.customer_id} />
-          </>
+               // 1️⃣ Optimistic UI
+                 setMessages(prev =>
+                    prev.map(m =>
+                      m.id === tempId
+                        ? { ...m, status: 'sending' }
+                        : m
+                    ).concat(
+                      existingMsgId ? [] : 
+                      optimisticMsg
+                    )
+                  );
+                 try {
+                 // 2️⃣ Persist to backend
+                  const saved = await sendMessage(selectedCustomer.id, text);
+                  // 3️⃣ Sync DB ID + mark sent
+                  setMessages(prev =>
+                   prev.map(m =>
+                    m.id === tempId 
+                    ? { ...m, id: saved.id, status: 'sent' } 
+                    : m
+                   )
+                  );
+               } catch (err) {
+                 console.error('Send failed', err);
+
+                 // 4️⃣ Mark as failed
+                 setMessages(prev =>
+                  prev.map(m =>
+                    m.id === tempId 
+                    ? { ...m, status: 'failed' } 
+                    : m
+                 )
+                 );
+               }
+            }}
+
+            />
+            
+            {selectedCustomer && (
+             <AppointmentForm
+                selectedCustomer={selectedCustomer}
+                onClose={() => {}}
+             />
+          )}
+
+                      </>
         )}
       </div>
+
     </div>
   );
 }
-
