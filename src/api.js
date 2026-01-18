@@ -1,95 +1,91 @@
-import { supabase } from './supabase';
+import { supabase } from "./supabase";
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
-async function authFetch(url, options = {}) {
+/**
+ * Central authenticated fetch helper
+ * - Always hits backend (not Vite)
+ * - Always returns parsed JSON
+ * - Throws on non-2xx responses
+ */
+async function authFetch(path, options = {}) {
   const { data } = await supabase.auth.getSession();
   const token = data?.session?.access_token;
-    return fetch(url, {
+
+  const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(options.headers || {})
-    }
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
   });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`API ${res.status}: ${errorText}`);
+  }
+
+  return res.json();
 }
 
-export async function fetchCustomers() {
-  const res = await authFetch(`${BASE_URL}/customers`);
-  const json = await res.json();
+/* =========================
+   AUTH / CONTEXT
+========================= */
 
-  return (json.data || json).map(c => ({
+export async function getMe() {
+  return authFetch(`/me`);
+}
+
+/* =========================
+   CUSTOMERS
+========================= */
+
+export async function fetchCustomers() {
+  const json = await authFetch(`/customers`);
+
+  return (json.data || json).map((c) => ({
     ...c,
-    id: c.id || c.customer_id
+    id: c.id || c.customer_id,
   }));
 }
 
 export async function fetchMessages(customerId) {
-  const res = await authFetch(`${BASE_URL}/customers/${customerId}/messages`);
-  return res.json();
+  return authFetch(`/customers/${customerId}/messages`);
 }
 
-export async function createAppointment(payload) {
-  const res = await authFetch(`${BASE_URL}/appointments`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) {
-  const errorText = await res.text();
-  console.error('APPOINTMENT API ERROR:', errorText);
-  throw new Error(errorText);
-}
-  return res.json();
-}
-
+/* =========================
+   MESSAGES
+========================= */
 
 export async function sendMessage(customerId, text) {
-  const res = await authFetch(`${BASE_URL}/messages/send`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+  return authFetch(`/messages/send`, {
+    method: "POST",
     body: JSON.stringify({
       customer_id: customerId,
       text,
     }),
   });
+}
 
-  if (!res.ok) {
-    throw new Error('Failed to send message');
-  }
+/* =========================
+   APPOINTMENTS
+========================= */
 
-  return res.json();
-} 
+export async function createAppointment(payload) {
+  return authFetch(`/appointments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
 
 export async function fetchUpcomingAppointments() {
-  const res = await authFetch(`${BASE_URL}/appointments/upcoming`);
-  return res.json();
+  return authFetch(`/appointments/upcoming`);
 }
-export async function fetchNextAppointment(customerId) {
-  const res = await authFetch(
-    `${BASE_URL}/appointments/upcoming?customer_id=${customerId}`
+
+export async function fetchNextAppointment(conversationId) {
+  return authFetch(
+    `/appointments/next?conversationId=${conversationId}`
   );
-
-  if (!res.ok) {
-    return null;
-  }
-
-  const data = await res.json();
-
-  // If backend returns array
-  if (Array.isArray(data) && data.length > 0) {
-    return data[0];
-  }
-
-  // If backend returns single object
-  if (data && data.id) {
-    return data;
-  }
-
-  return null;
 }
-

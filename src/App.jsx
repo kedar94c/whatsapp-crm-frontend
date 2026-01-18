@@ -6,12 +6,15 @@ import Login from './components/Login';
 import { supabase } from './supabase';
 import Inbox from './components/Inbox';
 import { sendMessage } from './api';
+import { useBusiness } from "./context/BusinessContext";
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [messages, setMessages] = useState([]);
+  const { business, loading } = useBusiness();
+  console.log("BUSINESS FROM CONTEXT", business, loading);
 
   // Restore session on reload
   useEffect(() => {

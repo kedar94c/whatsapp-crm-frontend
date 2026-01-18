@@ -1,9 +1,25 @@
 //import AppointmentBanner from './AppointmentBanner';
+import { useBusiness } from "../context/BusinessContext";
 export default function Conversation({ customer, messages,onSend }) {
   if (typeof onSend !== 'function') {
     console.error('onSend prop is missing or not a function');
     return null;
   }
+  const { business } = useBusiness();
+
+  const timeFormatter = business?.timezone
+  ? new Intl.DateTimeFormat("en-IN", {
+      timeZone: business.timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  : null;
+
+function formatInBusinessTimezone(utcISOString) {
+  if (!utcISOString || !timeFormatter) return "";
+  return timeFormatter.format(new Date(utcISOString));
+}
+
 
   return (
     <div className="flex-1 flex flex-col bg-gray-50">
@@ -17,7 +33,7 @@ export default function Conversation({ customer, messages,onSend }) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {messages.length === 0 && (
+        {(!messages || messages.length === 0) &&(
           <div className="text-center text-sm text-gray-400">
             No messages yet
           </div>
@@ -39,10 +55,9 @@ export default function Conversation({ customer, messages,onSend }) {
 
               <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">
                 <span>
-                  {new Date(msg.created_at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  <span className="time">
+                     {formatInBusinessTimezone(msg.created_at)}
+                  </span>
                 </span>
 
                 {msg.direction === 'out' && (
