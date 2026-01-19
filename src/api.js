@@ -84,8 +84,7 @@ export async function fetchUpcomingAppointments() {
   return authFetch(`/appointments/upcoming`);
 }
 
-export async function fetchNextAppointment(conversationId) {
-  return authFetch(
-    `/appointments/next?conversationId=${conversationId}`
-  );
+export async function fetchNextAppointment(customerId) {
+  return authFetch(`/appointments/next?customerId=${customerId}`);
 }
+

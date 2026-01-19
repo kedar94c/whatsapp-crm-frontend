@@ -1,12 +1,16 @@
-//import AppointmentBanner from './AppointmentBanner';
+
+import { useEffect, useState } from "react";
 import { useBusiness } from "../context/BusinessContext";
+import AppointmentBanner from "./AppointmentBanner";
+import { fetchNextAppointment } from "../api";
+
 export default function Conversation({ customer, messages,onSend }) {
   if (typeof onSend !== 'function') {
     console.error('onSend prop is missing or not a function');
     return null;
   }
   const { business } = useBusiness();
-
+  const [nextAppointment, setNextAppointment] = useState(null);
   const timeFormatter = business?.timezone
   ? new Intl.DateTimeFormat("en-IN", {
       timeZone: business.timezone,
@@ -14,6 +18,19 @@ export default function Conversation({ customer, messages,onSend }) {
       minute: "2-digit",
     })
   : null;
+useEffect(() => {
+  if (!customer?.id) return;
+
+  fetchNextAppointment(customer.id)
+    .then(data => {
+            setNextAppointment(data);
+    })
+    .catch(err => {
+      console.error("Failed to fetch next appointment", err);
+      setNextAppointment(null);
+    });
+}, [customer?.id]);
+
 
 function formatInBusinessTimezone(utcISOString) {
   if (!utcISOString || !timeFormatter) return "";
@@ -30,6 +47,8 @@ function formatInBusinessTimezone(utcISOString) {
           {customer.name || customer.phone}
         </div>
       </div>
+
+       <AppointmentBanner appointment={nextAppointment} />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">

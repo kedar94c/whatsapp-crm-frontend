@@ -14,7 +14,6 @@ export default function App() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [messages, setMessages] = useState([]);
   const { business, loading } = useBusiness();
-  console.log("BUSINESS FROM CONTEXT", business, loading);
 
   // Restore session on reload
   useEffect(() => {
