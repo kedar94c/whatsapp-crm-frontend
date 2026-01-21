@@ -88,3 +88,26 @@ export async function fetchNextAppointment(customerId) {
   return authFetch(`/appointments/next?customerId=${customerId}`);
 }
 
+export async function fetchAppointments() {
+  return authFetch('/appointments');
+}
+
+export async function updateAppointmentStatus(id, status) {
+  return authFetch(`/appointments/${id}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ status })
+  });
+}
+
+export async function rescheduleAppointment(id, appointment_time) {
+  return authFetch(`/appointments/${id}/reschedule`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ appointment_time })
+  });
+}
