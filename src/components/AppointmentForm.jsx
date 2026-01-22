@@ -44,6 +44,11 @@ export default function AppointmentForm({
       setError('Please select date and time');
       return;
     }
+     const selected = new Date(time);
+       if (selected < new Date()) {
+       setError('Appointment time cannot be in the past');
+       return;
+       }
 
     try {
       if (mode === 'reschedule' && appointment) {
@@ -91,11 +96,13 @@ setTimeout(() => {
       )}
 
       <input
-        type="datetime-local"
-        value={time}
-        onChange={e => setTime(e.target.value)}
-        className="w-full border rounded px-3 py-2 mb-3"
+       type="datetime-local"
+       value={time}
+       min={new Date().toISOString().slice(0, 16)}   // 👈 prevents past selection
+       onChange={(e) => setTime(e.target.value)}
+       className="w-full border rounded px-3 py-2"
       />
+
 {success && (
   <p className="text-sm text-green-600 mb-2">
     Appointment {mode === 'reschedule' ? 'rescheduled' : 'created'} successfully
