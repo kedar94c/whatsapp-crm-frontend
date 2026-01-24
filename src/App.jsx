@@ -135,6 +135,12 @@ export default function App() {
   return () => supabase.removeChannel(channel);
 }, [session]); // Remove selectedCustomer from deps
                   // Load messages when customer changes 
+                  // 🔑 CLEAR messages when switching customers
+useEffect(() => {
+  if (!selectedCustomer) return;
+  setMessages([]);
+}, [selectedCustomer?.id]);
+
                   useEffect(() => {
                      if (!selectedCustomer) return; 
                      fetchMessages(selectedCustomer.id).then(fetched => {
