@@ -111,3 +111,16 @@ export async function rescheduleAppointment(id, appointment_time) {
     body: JSON.stringify({ appointment_time })
   });
 }
+
+export async function markConversationRead(customerId) {
+  const res = await authFetch('/conversations/read', {
+    method: 'POST',
+    body: JSON.stringify({ customer_id: customerId }),
+  });
+
+ if (!res.ok && res.status !== 204) {
+  throw new Error('Failed to mark conversation read');
+}
+
+  return res.json();
+}
