@@ -4,7 +4,7 @@ import { useBusiness } from "../context/BusinessContext";
 import AppointmentBanner from "./AppointmentBanner";
 import { fetchNextAppointment } from "../api";
 
-export default function Conversation({ customer, messages, onSend, onIncomingMessage, onReachedBottom }) {
+export default function Conversation({ customer, messages, onSend, onIncomingMessage, onReachedBottom, onOpenAppointment }) {
   const { business } = useBusiness();
   const [nextAppointment, setNextAppointment] = useState(null);
   const messagesContainerRef = useRef(null);
@@ -18,10 +18,10 @@ export default function Conversation({ customer, messages, onSend, onIncomingMes
 
   const timeFormatter = business?.timezone
     ? new Intl.DateTimeFormat("en-IN", {
-        timeZone: business.timezone,
-        hour: "2-digit",
-        minute: "2-digit",
-      })
+      timeZone: business.timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+    })
     : null;
 
   function formatInBusinessTimezone(utcISOString) {
@@ -46,50 +46,50 @@ export default function Conversation({ customer, messages, onSend, onIncomingMes
   /* ---------------- realtime messages subscription ---------------- */
 
   useEffect(() => {
-  if (!customer?.id) return;
+    if (!customer?.id) return;
 
-  const channel = supabase
-    .channel(`messages:${customer.id}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "messages",
-        filter: `customer_id=eq.${customer.id}`, // 🔑 Only filter on customer_id (valid syntax)
-      },
-      payload => {
-        const newMsg = payload.new;
+    const channel = supabase
+      .channel(`messages:${customer.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `customer_id=eq.${customer.id}`, // 🔑 Only filter on customer_id (valid syntax)
+        },
+        payload => {
+          const newMsg = payload.new;
 
-        // 🔑 Client-side filter: Only process incoming
-        if (newMsg.direction !== 'in') {
-          console.log('Realtime event skipped (outgoing):', newMsg);
-          return;
+          // 🔑 Client-side filter: Only process incoming
+          if (newMsg.direction !== 'in') {
+            console.log('Realtime event skipped (outgoing):', newMsg);
+            return;
+          }
+
+          console.log('Realtime incoming received:', newMsg);
+
+          onIncomingMessage?.(newMsg);
+
+          const wasAtBottom = isUserAtBottom(messagesContainerRef.current);
+
+          if (wasAtBottom) {
+            onReachedBottom?.(customer.id);
+            requestAnimationFrame(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            });
+          }
         }
+      )
+      .subscribe((status, err) => {
+        console.log('Realtime subscription status:', status, err || 'no error');
+      });
 
-        console.log('Realtime incoming received:', newMsg);
-
-        onIncomingMessage?.(newMsg);
-
-        const wasAtBottom = isUserAtBottom(messagesContainerRef.current);
-
-        if (wasAtBottom) {
-          onReachedBottom?.(customer.id);
-          requestAnimationFrame(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-          });
-        }
-      }
-    )
-    .subscribe((status, err) => {
-      console.log('Realtime subscription status:', status, err || 'no error');
-    });
-
-  return () => {
-    console.log('Cleaning up realtime channel for customer:', customer.id);
-    supabase.removeChannel(channel);
-  };
-}, [customer?.id]);
+    return () => {
+      console.log('Cleaning up realtime channel for customer:', customer.id);
+      supabase.removeChannel(channel);
+    };
+  }, [customer?.id]);
 
   /* ---------------- auto scroll (WhatsApp-style) ---------------- */
 
@@ -128,22 +128,24 @@ export default function Conversation({ customer, messages, onSend, onIncomingMes
     return () => el.removeEventListener('scroll', handleScroll);
   }, [customer?.id]);
   useLayoutEffect(() => {
-  if (!messagesEndRef.current) return;
-  if (!lastMessage) return;
+    if (!messagesEndRef.current) return;
+    if (!lastMessage) return;
 
-  // Always scroll when the user sends a message
-  if (lastMessage.direction === 'out') {
-    messagesEndRef.current.scrollIntoView({
-      behavior: lastMessage.status === 'sending' ? 'auto' : 'smooth'
-    });
-  }
-}, [lastMessage?.id]);
+    // Always scroll when the user sends a message
+    if (lastMessage.direction === 'out') {
+      messagesEndRef.current.scrollIntoView({
+        behavior: lastMessage.status === 'sending' ? 'auto' : 'smooth'
+      });
+    }
+  }, [lastMessage?.id]);
 
 
   /* ---------------- render ---------------- */
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden">
+    <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden"
+    style={{ paddingBottom: '56px' }} // 👈 space for BottomTabs
+    >
 
       {/* Header (fixed) */}
       <div className="h-14 flex items-center px-4 border-b bg-white shrink-0">
@@ -210,32 +212,81 @@ export default function Conversation({ customer, messages, onSend, onIncomingMes
       </div>
 
       {/* Input (fixed) */}
-      <div className="h-14 border-t bg-white flex items-center px-3 gap-2 shrink-0">
-        <input
-          id="chat-input"
-          type="text"
-          placeholder="Type a message"
-          className="flex-1 text-sm border rounded-full px-4 py-2"
-          onKeyDown={e => {
-            if (e.key === "Enter" && e.target.value.trim()) {
-              onSend(e.target.value);
-              e.target.value = "";
-            }
-          }}
-        />
+<div className="h-16 bg-gray-50 flex items-center px-2 gap-2 shrink-0">
 
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm"
-          onClick={() => {
-            const input = document.getElementById("chat-input");
-            if (!input.value.trim()) return;
-            onSend(input.value);
-            input.value = "";
-          }}
-        >
-          Send
-        </button>
-      </div>
+  <div
+    className="
+      w-full
+      flex items-center gap-2
+      bg-white
+      rounded-full
+      px-2 py-1
+      shadow-sm
+    "
+  >
+    {/* ➕ */}
+    <button
+      onClick={onOpenAppointment}
+      className="
+        w-10 h-10
+        flex items-center justify-center
+        rounded-full
+        bg-blue-600
+        text-white
+        text-xl
+        shrink-0
+      "
+      aria-label="Create appointment"
+    >
+      +
+    </button>
+
+    {/* Input */}
+    <input
+      id="chat-input"
+      type="text"
+      placeholder="Type a message"
+      className="
+        flex-1
+        min-w-0
+        text-sm
+        bg-transparent
+        outline-none
+        px-2
+      "
+      onKeyDown={e => {
+        if (e.key === "Enter" && e.target.value.trim()) {
+          onSend(e.target.value);
+          e.target.value = "";
+        }
+      }}
+    />
+
+    {/* Send */}
+    <button
+      className="
+        px-3 py-1.5
+        rounded-full
+        text-sm
+        bg-blue-600
+        text-white
+        font-medium
+        shrink-0
+      "
+      onClick={() => {
+        const input = document.getElementById("chat-input");
+        if (!input.value.trim()) return;
+        onSend(input.value);
+        input.value = "";
+      }}
+    >
+      Send
+    </button>
+  </div>
+</div>
+
+
+
     </div>
   );
 }

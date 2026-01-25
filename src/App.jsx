@@ -31,6 +31,8 @@ export default function App() {
   const [moreScreen, setMoreScreen] = useState("menu");
   const [unreadCustomerIds, setUnreadCustomerIds] = useState(new Set());
   const [loadingCustomers, setLoadingCustomers] = useState(true);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+
 
   function handleIncomingMessage(msg) {
     // Only incoming here now, so just add
@@ -171,7 +173,7 @@ export default function App() {
       setMessages([]);
     }
   }, [activeTab]);
-  
+
   useEffect(() => {
     if (activeTab !== TABS.MORE) {
       setMoreScreen("menu");
@@ -328,22 +330,54 @@ export default function App() {
                           return next;
                         });
                       }}
+                      onOpenAppointment={() => setShowAppointmentModal(true)}
                     />
-                    {selectedCustomer && (
-                      <AppointmentForm
-                        selectedCustomer={selectedCustomer}
-                        onClose={() => { }} />
-                    )}
                   </>
                 )}
               </div>
             </>
           )}
-          {activeTab === TABS.APPOINTMENTS && (
+           {showAppointmentModal && (
+                <div
+                  className="fixed inset-0 z-50 flex items-end bg-black/40"
+                  onClick={() => setShowAppointmentModal(false)}
+                >
+                  <div
+                    className="bg-white w-full rounded-t-xl p-4"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <h3 className="text-lg font-semibold mb-2">
+                      Create Appointment
+                    </h3>
+
+                    <div className="text-sm text-gray-600 mb-4">
+                      {selectedCustomer
+                        ? (selectedCustomer.name || selectedCustomer.phone)
+                        : 'Select customer'}
+                    </div>
+
+                    {/* placeholder */}
+                    <div className="border rounded p-4 text-center text-gray-500">
+                      Appointment form coming next
+                    </div>
+
+                    <button
+                      className="mt-4 w-full py-2 rounded bg-gray-100"
+                      onClick={() => setShowAppointmentModal(false)}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+
+          {activeTab === 'appointments' && (
             <AppointmentsTab
               onOpenConversation={openConversationFromAppointment}
+              onNewAppointment={() => setShowAppointmentModal(true)}
             />
           )}
+
           {activeTab === TABS.MORE && (
             moreScreen === "menu" ? (
               <MoreMenu
