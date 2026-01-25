@@ -124,3 +124,10 @@ export async function markConversationRead(customerId) {
 
   return res.json();
 }
+
+export async function updateAppointmentSettings(settings) {
+  return authFetch('/businesses/settings/appointments', {
+    method: 'PATCH',
+    body: JSON.stringify(settings),
+  });
+}
