@@ -2,15 +2,18 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { fetchAppointments, updateAppointmentStatus } from '../api';
 import { useBusiness } from '../context/BusinessContext';
-import AppointmentForm from './AppointmentForm';
+import AppointmentModal from "./AppointmentModal";
+
 
 export default function AppointmentsTab({ onOpenConversation, onNewAppointment }) {
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { business } = useBusiness();
-    const [reschedulingAppt, setReschedulingAppt] = useState(null);
     const [recentlyUpdatedId, setRecentlyUpdatedId] = useState(null);
+    const [appointmentModal, setAppointmentModal] = useState(null);
+
+
 
     /* ---------------- helpers ---------------- */
 
@@ -84,20 +87,20 @@ export default function AppointmentsTab({ onOpenConversation, onNewAppointment }
     /* ---------------- modal UX ---------------- */
 
     useEffect(() => {
-        document.body.style.overflow = reschedulingAppt ? 'hidden' : 'auto';
+        document.body.style.overflow = appointmentModal ? 'hidden' : 'auto';
         return () => (document.body.style.overflow = 'auto');
-    }, [reschedulingAppt]);
+    }, [appointmentModal]);
 
     useEffect(() => {
-        if (!reschedulingAppt) return;
+        if (!appointmentModal) return;
 
         function handleEsc(e) {
-            if (e.key === 'Escape') setReschedulingAppt(null);
+            if (e.key === 'Escape') setAppointmentModal(null);
         }
 
         window.addEventListener('keydown', handleEsc);
         return () => window.removeEventListener('keydown', handleEsc);
-    }, [reschedulingAppt]);
+    }, [appointmentModal]);
 
     /* ---------------- grouping + sorting ---------------- */
 
@@ -206,7 +209,16 @@ export default function AppointmentsTab({ onOpenConversation, onNewAppointment }
 
                             <button
                                 className="text-xs text-blue-600"
-                                onClick={() => setReschedulingAppt(appt)}
+                                onClick={() =>
+                                    setAppointmentModal({
+                                        appointment: appt,
+                                        customer: {
+                                            phone: appt.customers?.phone,
+                                            name: appt.customers?.name,
+                                        },
+                                        isReschedule: true,
+                                    })
+                                }
                             >
                                 Reschedule
                             </button>
@@ -218,11 +230,21 @@ export default function AppointmentsTab({ onOpenConversation, onNewAppointment }
                         appt.status === 'no_show') && (
                             <button
                                 className="text-xs text-blue-600"
-                                onClick={() => setReschedulingAppt(appt)}
+                                onClick={() =>
+                                    setAppointmentModal({
+                                        appointment: appt,
+                                        customer: {
+                                            phone: appt.customers?.phone,
+                                            name: appt.customers?.name,
+                                        },
+                                        isReschedule: true,
+                                    })
+                                }
                             >
                                 Reschedule
                             </button>
                         )}
+
                 </div>
             </div>
         );
@@ -285,26 +307,6 @@ export default function AppointmentsTab({ onOpenConversation, onNewAppointment }
                 )}
             </div>
 
-            {/* reschedule modal */}
-            {reschedulingAppt && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
-                    onClick={() => setReschedulingAppt(null)}
-                >
-                    <div
-                        className="bg-white rounded-lg w-full max-w-md shadow-lg"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <AppointmentForm
-                            selectedCustomer={{ id: reschedulingAppt.customer_id }}
-                            appointment={reschedulingAppt}
-                            mode="reschedule"
-                            onClose={() => setReschedulingAppt(null)}
-                            onSuccess={loadAppointments}
-                        />
-                    </div>
-                </div>
-            )}
             {/* Floating + New Appointment button */}
             <button
                 onClick={onNewAppointment}
@@ -325,6 +327,17 @@ export default function AppointmentsTab({ onOpenConversation, onNewAppointment }
             >
                 +
             </button>
+            {appointmentModal && (
+                <AppointmentModal
+                    customer={appointmentModal.customer}
+                    appointment={appointmentModal.appointment}
+                    isReschedule={appointmentModal.isReschedule}
+                    onClose={() => {
+                        setAppointmentModal(null);
+                        loadAppointments();
+                    }}
+                />
+            )}
 
         </div>
     );

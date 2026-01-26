@@ -131,3 +131,24 @@ export async function updateAppointmentSettings(settings) {
     body: JSON.stringify(settings),
   });
 }
+
+export async function fetchAppointmentSettings() {
+  return authFetch('/businesses/settings/appointments');
+}
+
+export async function fetchAvailability(date, excludeAppointmentId) {
+  const params = new URLSearchParams({ date });
+
+  if (excludeAppointmentId) {
+    params.append("excludeAppointmentId", excludeAppointmentId);
+  }
+
+  return authFetch(`/appointments/availability?${params.toString()}`);
+}
+
+export async function rescheduleAppointmentSlot(id, payload) {
+  return authFetch(`/appointments/${id}/reschedule-slot`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}

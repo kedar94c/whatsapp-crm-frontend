@@ -6,7 +6,7 @@ export default function BottomTabs({ activeTab, onChange }) {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-14 bg-white border-t flex md:hidden">
+    <div className="h-14 bg-white border-t flex">
       {tabs.map(tab => {
         const isActive = activeTab === tab.id;
 

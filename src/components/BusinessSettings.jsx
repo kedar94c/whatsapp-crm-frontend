@@ -13,9 +13,11 @@ export default function BusinessSettings({ onBack }) {
     const { business, user } = useBusiness();
     const [activeTab, setActiveTab] = useState(TABS.APPOINTMENTS);
     const { appointmentSettings, setAppointmentSettings } = useBusiness();
-
-
     const [settings, setSettings] = useState(appointmentSettings);
+    const [maxAppointmentsPerSlot, setMaxAppointmentsPerSlot] = useState(
+        business?.appointment_settings?.max_appointments_per_slot ?? 1
+    );
+
 
 
 
@@ -33,8 +35,17 @@ export default function BusinessSettings({ onBack }) {
         }
     }, [appointmentSettings]);
 
+    useEffect(() => {
+        if (!business?.appointment_settings) return;
+
+        setMaxAppointmentsPerSlot(
+            business.appointment_settings.max_appointments_per_slot ?? 1
+        );
+    }, [business]);
+
+
     return (
-        <div className="flex-1 bg-gray-50">
+        <div className="flex flex-col h-full min-h-0">
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b bg-white">
                 <button onClick={onBack}>←</button>
@@ -72,9 +83,9 @@ export default function BusinessSettings({ onBack }) {
             </div>
 
             {/* Content */}
-            <div className="p-4">
+            <div className="flex flex-col h-full min-h-0">
                 {activeTab === TABS.APPOINTMENTS && (
-                    <div className="space-y-6">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
 
                         {/* Reminder timings */}
                         <div className="bg-white border rounded p-4">
@@ -155,12 +166,35 @@ export default function BusinessSettings({ onBack }) {
                             </select>
                         </div>
 
+                        {/* Slot Setting */}
+                        <div className="bg-white border rounded p-4">
+                            <div className="font-medium">Appointment Slots</div>
+                            <div className="text-sm text-gray-600 mb-3">
+                                Max appointments per slot
+                            </div>
+                            <input
+                                type="number"
+                                min={1}
+                                value={maxAppointmentsPerSlot}
+                                onChange={e => setMaxAppointmentsPerSlot(Number(e.target.value))}
+                                className="border rounded px-3 py-2"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Example: 1 = no overlap, 2 = allow 2 customers at same time
+                            </p>
+                        </div>
+
                         {/* Save */}
                         <button
                             className="w-full bg-blue-600 text-white py-3 rounded"
                             onClick={async () => {
                                 try {
-                                    const updated = await updateAppointmentSettings(settings);
+                                    const payload = {
+                                        ...settings,
+                                        max_appointments_per_slot: maxAppointmentsPerSlot,
+                                    };
+
+                                    const updated = await updateAppointmentSettings(payload);
                                     setAppointmentSettings(updated);
                                     alert('Settings saved');
                                 } catch (err) {
@@ -168,10 +202,10 @@ export default function BusinessSettings({ onBack }) {
                                     alert('Failed to save settings');
                                 }
                             }}
-
                         >
                             Save Settings
                         </button>
+
                     </div>
                 )}
 

@@ -14,6 +14,8 @@ import BottomTabs from './components/BottomTabs';
 import MoreMenu from './components/MoreMenu';
 import ProfileScreen from './components/ProfileScreen';
 import BusinessSettings from "./components/BusinessSettings";
+import AppointmentModal from "./components/AppointmentModal";
+
 
 export default function App() {
   const TABS = {
@@ -219,11 +221,7 @@ export default function App() {
             );
           })}
         </div>
-        <BottomTabs
-          activeTab={activeTab}
-          onChange={setActiveTab}
-        />
-
+        
         {/* Main content */}
         <div className="flex flex-1 overflow-hidden">
           {activeTab === TABS.INBOX && (
@@ -337,39 +335,13 @@ export default function App() {
               </div>
             </>
           )}
-           {showAppointmentModal && (
-                <div
-                  className="fixed inset-0 z-50 flex items-end bg-black/40"
-                  onClick={() => setShowAppointmentModal(false)}
-                >
-                  <div
-                    className="bg-white w-full rounded-t-xl p-4"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <h3 className="text-lg font-semibold mb-2">
-                      Create Appointment
-                    </h3>
+          {showAppointmentModal && (
+            <AppointmentModal
+              customer={selectedCustomer}
+              onClose={() => setShowAppointmentModal(false)}
+            />
+          )}
 
-                    <div className="text-sm text-gray-600 mb-4">
-                      {selectedCustomer
-                        ? (selectedCustomer.name || selectedCustomer.phone)
-                        : 'Select customer'}
-                    </div>
-
-                    {/* placeholder */}
-                    <div className="border rounded p-4 text-center text-gray-500">
-                      Appointment form coming next
-                    </div>
-
-                    <button
-                      className="mt-4 w-full py-2 rounded bg-gray-100"
-                      onClick={() => setShowAppointmentModal(false)}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              )}
 
           {activeTab === 'appointments' && (
             <AppointmentsTab
@@ -394,6 +366,10 @@ export default function App() {
 
 
         </div>
+        <BottomTabs
+          activeTab={activeTab}
+          onChange={setActiveTab}
+        />
       </div>
     </>
   );
