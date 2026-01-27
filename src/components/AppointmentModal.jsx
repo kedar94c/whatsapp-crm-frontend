@@ -7,6 +7,8 @@ import {
 
 import { fetchAvailability } from "../api";
 import toast from "react-hot-toast";
+import { fetchServices } from "../api";
+
 
 
 export default function AppointmentModal({
@@ -23,6 +25,17 @@ export default function AppointmentModal({
   const { business } = useBusiness();
   const { appointmentSettings } = useBusiness();
   const [availability, setAvailability] = useState({});
+  const [services, setServices] = useState([]);
+  const [selectedServices, setSelectedServices] = useState([]); // array
+  const totalDurationMinutes = selectedServices.reduce(
+    (sum, s) => sum + s.duration_minutes,
+    0
+  );
+
+
+
+
+
 
   // Existing appointment slot (UTC minutes)
   const existingSlotMinutes = appointment
@@ -39,15 +52,6 @@ export default function AppointmentModal({
 
   const todayISO = new Date().toISOString().slice(0, 10);
   const [selectedDate, setSelectedDate] = useState(todayISO);
-
-
-  const services = [
-    { id: "facial", name: "Facial", duration: 30 },
-    { id: "haircut", name: "Haircut", duration: 45 },
-    { id: "massage", name: "Massage", duration: 60 },
-  ];
-
-  const [selectedService, setSelectedService] = useState(services[0]);
 
   function formatMinutesToLocalTime(minutes, timezone) {
     const utcDate = new Date(Date.UTC(1970, 0, 1, 0, minutes));
@@ -112,11 +116,11 @@ export default function AppointmentModal({
   }
 
 
-  const slots = generateSlots(
-    8,
-    20,
-    selectedService.duration
-  );
+  const slots =
+    totalDurationMinutes > 0
+      ? generateSlots(8, 20, totalDurationMinutes)
+      : [];
+
 
   function buildUtcDateTime(date, startMinutes) {
     const [year, month, day] = date.split("-").map(Number);
@@ -128,11 +132,24 @@ export default function AppointmentModal({
     return new Date(Date.UTC(year, month - 1, day, hours, minutes, 0))
       .toISOString();
   }
+  useEffect(() => {
+    fetchServices()
+      .then(data => {
+        setServices(data || []);
+        if (data?.length) {
+          setSelectedServices([data[0]]); // 👈 array
+        }
+      })
+      .catch(() => {
+        setServices([]);
+        setSelectedServices([]);
+      });
+  }, []);
 
 
   useEffect(() => {
     setSelectedSlot(null);
-  }, [selectedDate, selectedService]);
+  }, [selectedDate, selectedServices]);
 
   useEffect(() => {
     if (!selectedDate) return;
@@ -166,6 +183,27 @@ export default function AppointmentModal({
 
     setSelectedSlot(existingSlotMinutes);
   }, [isReschedule, existingSlotMinutes]);
+
+if (!selectedServices) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/40">
+      <div className="bg-white w-full rounded-t-xl p-4">
+        <div className="text-sm text-gray-500">
+          No services configured. Please add services in Business Settings.
+        </div>
+
+        <button
+          className="mt-4 w-full bg-gray-100 py-2 rounded"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 
 
   return (
@@ -227,7 +265,6 @@ export default function AppointmentModal({
           />
         </div>
 
-
         {/* Service selection */}
         <div className="mb-4">
           <label className="text-sm font-medium block mb-1">
@@ -235,20 +272,21 @@ export default function AppointmentModal({
           </label>
 
           <select
-            value={selectedService.id}
-            onChange={e =>
-              setSelectedService(
-                services.find(s => s.id === e.target.value)
-              )
-            }
+            value={selectedServices[0]?.id || ""}
+            onChange={e => {
+              const service = services.find(s => s.id === e.target.value);
+              setSelectedServices(service ? [service] : []);
+            }}
             className="w-full border rounded px-3 py-2 text-sm"
           >
             {services.map(service => (
               <option key={service.id} value={service.id}>
-                {service.name} ({service.duration} min)
+                {service.name} ({service.duration_minutes} min)
               </option>
             ))}
           </select>
+
+
         </div>
 
         {/* Slot picker */}
@@ -282,49 +320,44 @@ export default function AppointmentModal({
             })}
           </div>
         </div>
-
-
         {/* Actions */}
         <div className="flex gap-2">
           <button
             className="flex-1 bg-blue-600 text-white py-2 rounded disabled:opacity-50"
-
-            disabled={!selectedSlot}
-
+            disabled={!selectedSlot || selectedServices.length === 0}
             onClick={async () => {
-              const appointmentUtcTime = buildUtcDateTime(
-                selectedDate,
-                selectedSlot
-              );
+              try {
+                const appointmentUtcTime = buildUtcDateTime(
+                  selectedDate,
+                  selectedSlot
+                );
 
-              if (isReschedule && appointment) {
-                await rescheduleAppointmentSlot(appointment.id, {
-                  appointment_utc_time: appointmentUtcTime,
-                  duration_minutes: selectedService.duration,
-                  phone,
-                });
-                toast.success("Appointment rescheduled");
-              } else {
-                await createAppointment({
-                  phone,
-                  name,
-                  service: selectedService.name,
-                  duration_minutes: selectedService.duration,
-                  appointment_utc_time: appointmentUtcTime,
-                });
-                toast.success("Appointment created");
-              }
 
-              onClose(); {
-                try {
-                } catch (error) {
-                  console.error(err);
-                  toast.error("Failed to save appointment");
+                if (isReschedule && appointment) {
+                  await rescheduleAppointmentSlot(appointment.id, {
+                    appointment_utc_time: appointmentUtcTime,
+                    duration_minutes: appointment.duration_minutes, // unchanged
+                  }
+                  );
+                  toast.success("Appointment Rescheduled");
+                } else {
+                  await createAppointment({
+                    phone,
+                    name,
+                    service: selectedServices[0].name, // BACKWARD COMPAT
+                    duration_minutes: totalDurationMinutes,
+                    appointment_utc_time: appointmentUtcTime,
+                  });
+                  toast.success("Appointment created");
                 }
+
+
+                onClose();
+              } catch (err) {
+                console.error(err);
+                toast.error("Failed to save appointment");
               }
             }}
-
-
           >
             {isReschedule ? "Reschedule" : "Create"}
           </button>
@@ -336,6 +369,7 @@ export default function AppointmentModal({
             Cancel
           </button>
         </div>
+
       </div>
     </div>
   );

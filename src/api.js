@@ -142,3 +142,22 @@ export async function rescheduleAppointmentSlot(id, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+
+export async function fetchServices() {
+  return authFetch('/services');
+}
+
+export async function createService(payload) {
+  return authFetch('/services', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateService(id, payload) {
+  return authFetch(`/services/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}

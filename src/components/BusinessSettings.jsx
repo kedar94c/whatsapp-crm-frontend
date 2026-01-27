@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useBusiness } from "../context/BusinessContext";
 import { updateAppointmentSettings } from "../api";
+import { fetchServices } from "../api";
+import AddServiceModal from './AddServiceModal';
+import EditServiceModal from "./editServiceMOdal";
+import { updateService } from "../api";
 
 const TABS = {
     APPOINTMENTS: "appointments",
@@ -17,6 +21,10 @@ export default function BusinessSettings({ onBack }) {
     const [maxAppointmentsPerSlot, setMaxAppointmentsPerSlot] = useState(
         business?.appointment_settings?.max_appointments_per_slot ?? 1
     );
+    const [services, setServices] = useState([]);
+    const [showAddService, setShowAddService] = useState(false); // ADD THIS LINE
+    const [editingService, setEditingService] = useState(null);
+
 
 
 
@@ -43,9 +51,17 @@ export default function BusinessSettings({ onBack }) {
         );
     }, [business]);
 
+    useEffect(() => {
+        if (activeTab !== TABS.SERVICES) return;
+
+        fetchServices()
+            .then(setServices)
+            .catch(() => setServices([]));
+    }, [activeTab]);
+
 
     return (
-        <div className="flex flex-col h-full min-h-0">
+        <div className="flex flex-col h-full min-h-0 w-full max-w-full overflow-x-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b bg-white">
                 <button onClick={onBack}>←</button>
@@ -58,7 +74,8 @@ export default function BusinessSettings({ onBack }) {
             </div>
 
             {/* Tabs */}
-            <div className="flex bg-white border-b">
+            <div className="flex bg-white border-b w-full max-w-full overflow-x-hidden">
+
                 <TabButton
                     label="Appointments"
                     active={activeTab === TABS.APPOINTMENTS}
@@ -83,7 +100,7 @@ export default function BusinessSettings({ onBack }) {
             </div>
 
             {/* Content */}
-            <div className="flex flex-col h-full min-h-0">
+            <div className="flex flex-col h-full min-h-0 overflow-x-hidden max-w-full">
                 {activeTab === TABS.APPOINTMENTS && (
                     <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
 
@@ -141,31 +158,6 @@ export default function BusinessSettings({ onBack }) {
                                 <span className="text-sm">minutes after appointment time</span>
                             </div>
                         </div>
-
-                        {/* Default duration */}
-                        <div className="bg-white border rounded p-4">
-                            <div className="font-medium">Default Appointment Duration</div>
-                            <div className="text-sm text-gray-600 mb-3">
-                                Used when creating new appointments
-                            </div>
-
-                            <select
-                                value={settings.default_duration_minutes}
-                                onChange={e =>
-                                    setSettings(s => ({
-                                        ...s,
-                                        default_duration_minutes: Number(e.target.value),
-                                    }))
-                                }
-                                className="border rounded px-3 py-2"
-                            >
-                                <option value={15}>15 minutes</option>
-                                <option value={30}>30 minutes</option>
-                                <option value={45}>45 minutes</option>
-                                <option value={60}>60 minutes</option>
-                            </select>
-                        </div>
-
                         {/* Slot Setting */}
                         <div className="bg-white border rounded p-4">
                             <div className="font-medium">Appointment Slots</div>
@@ -215,13 +207,94 @@ export default function BusinessSettings({ onBack }) {
                         text="Control reminder messages, follow-ups, and repeat visit logic."
                     />
                 )}
-
                 {activeTab === TABS.SERVICES && (
-                    <Placeholder
-                        title="Services"
-                        text="Define services and how often customers should return."
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 pb-24">
+
+                        {/* Services card */}
+                        <div className="bg-white border rounded p-4 w-full max-w-full overflow-hidden">
+                            <div className="font-medium mb-3">Services</div>
+
+                            {services.length === 0 ? (
+                                <div className="text-sm text-gray-500">
+                                    No services added yet
+                                </div>
+                            ) : (
+                                <div className="divide-y">
+                                    {services.map(service => (
+                                        <div
+                                            key={service.id}
+                                            className="py-3 flex items-start justify-between gap-3"
+                                        >
+                                            {/* Left: service info */}
+                                            <div className="min-w-0">
+                                                <div className="text-sm font-medium truncate">
+                                                    {service.name}
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    {service.duration_minutes} minutes
+                                                </div>
+                                            </div>
+
+                                            {/* Right: actions */}
+                                            <div className="flex shrink-0 gap-2">
+                                                <button
+                                                    className="text-xs text-blue-600"
+                                                    onClick={() => setEditingService(service)}
+                                                >
+                                                    Edit
+                                                </button>
+
+                                                <button
+                                                    className="text-xs text-red-600"
+                                                    onClick={async () => {
+                                                        await updateService(service.id, { is_active: false });
+                                                        setServices(prev =>
+                                                            prev.filter(s => s.id !== service.id)
+                                                        );
+                                                    }}
+                                                >
+                                                    Disable
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                            )}
+                        </div>
+
+                        {/* Add service button — SAME AS SAVE BUTTON */}
+                        <button
+                            className="w-full bg-blue-600 text-white py-3 rounded"
+                            onClick={() => setShowAddService(true)}
+                        >
+                            + Add Service
+                        </button>
+
+                    </div>
+                )}
+
+                {showAddService && (
+                    <AddServiceModal
+                        onClose={() => setShowAddService(false)}
+                        onCreated={service =>
+                            setServices(prev => [...prev, service])
+                        }
                     />
                 )}
+                {editingService && (
+                    <EditServiceModal
+                        service={editingService}
+                        onClose={() => setEditingService(null)}
+                        onSaved={updated => {
+                            setServices(prev =>
+                                prev.map(s => (s.id === updated.id ? updated : s))
+                            );
+                        }}
+                    />
+                )}
+
+
 
                 {activeTab === TABS.TEAM && (
                     <Placeholder
