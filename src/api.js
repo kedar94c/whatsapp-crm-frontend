@@ -102,16 +102,6 @@ export async function updateAppointmentStatus(id, status) {
   });
 }
 
-export async function rescheduleAppointment(id, appointment_time) {
-  return authFetch(`/appointments/${id}/reschedule`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ appointment_time })
-  });
-}
-
 export async function markConversationRead(customerId) {
   const res = await authFetch('/conversations/read', {
     method: 'POST',

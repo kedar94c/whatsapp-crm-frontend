@@ -204,7 +204,7 @@ export default function AppointmentModal({
 
           <input
             type="text"
-            disabled={isReschedule || (isCustomerKnown && !canEditName)}
+            // disabled={isReschedule || (isCustomerKnown && !canEditName)}
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Customer name"
@@ -301,6 +301,7 @@ export default function AppointmentModal({
                 await rescheduleAppointmentSlot(appointment.id, {
                   appointment_utc_time: appointmentUtcTime,
                   duration_minutes: selectedService.duration,
+                  phone,
                 });
                 toast.success("Appointment rescheduled");
               } else {

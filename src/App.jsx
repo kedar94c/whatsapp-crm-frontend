@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import Conversation from './components/Conversation';
-import AppointmentForm from './components/AppointmentForm';
 import Login from './components/Login';
 import { supabase } from './supabase';
 import Inbox from './components/Inbox';
