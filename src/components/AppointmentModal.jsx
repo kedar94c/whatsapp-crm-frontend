@@ -334,22 +334,25 @@ if (!selectedServices) {
 
 
                 if (isReschedule && appointment) {
-                  await rescheduleAppointmentSlot(appointment.id, {
-                    appointment_utc_time: appointmentUtcTime,
-                    duration_minutes: appointment.duration_minutes, // unchanged
-                  }
-                  );
-                  toast.success("Appointment Rescheduled");
-                } else {
-                  await createAppointment({
-                    phone,
-                    name,
-                    service: selectedServices[0].name, // BACKWARD COMPAT
-                    duration_minutes: totalDurationMinutes,
-                    appointment_utc_time: appointmentUtcTime,
-                  });
-                  toast.success("Appointment created");
-                }
+  await rescheduleAppointmentSlot(appointment.id, {
+    appointment_utc_time: appointmentUtcTime,
+  });
+  toast.success("Appointment rescheduled");
+}
+
+               else {
+  await createAppointment({
+    phone,
+    name,
+    services: selectedServices.map(s => ({
+      service_id: s.id,
+      duration_minutes: s.duration_minutes,
+    })),
+    appointment_utc_time: appointmentUtcTime,
+  });
+  toast.success("Appointment created");
+}
+
 
 
                 onClose();

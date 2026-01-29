@@ -3,7 +3,13 @@ import { useBusiness } from "../context/BusinessContext";
 
 export default function AppointmentBanner({ appointment }) {
   const { business } = useBusiness();
-  
+
+  const serviceLabel =
+  appointment.appointment_services
+    ?.map(s => s.services?.name)
+    .filter(Boolean)
+    .join(' + ') || 'Service';
+
   if (!appointment || !business?.timezone) return null;
 
   const formatter = new Intl.DateTimeFormat("en-IN", {
@@ -26,7 +32,7 @@ export default function AppointmentBanner({ appointment }) {
       </div>
 
       <div className="text-gray-700">
-        {appointment.service || "Service"} at{" "}
+        {serviceLabel} at{" "}
         <span className="font-medium">{formattedTime}</span>
       </div>
     </div>

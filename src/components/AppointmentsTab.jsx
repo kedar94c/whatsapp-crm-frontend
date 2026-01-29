@@ -64,6 +64,18 @@ export default function AppointmentsTab({ onOpenConversation, onNewAppointment }
         }
     }
 
+    function getServiceLabel(appt) {
+        if (!appt.appointment_services?.length) {
+            return '—';
+        }
+
+        return appt.appointment_services
+            .map(s => s.services?.name)
+            .filter(Boolean)
+            .join(' + ');
+    }
+
+
     /* ---------------- data load ---------------- */
 
     async function loadAppointments() {
@@ -129,8 +141,9 @@ export default function AppointmentsTab({ onOpenConversation, onNewAppointment }
                 </div>
 
                 <div className="text-gray-600">
-                    {appt.service || '—'}
+                    {getServiceLabel(appt)}
                 </div>
+
 
                 <div className="text-xs text-gray-500">
                     {formatInBusinessTimezone(appt.appointment_time)}
