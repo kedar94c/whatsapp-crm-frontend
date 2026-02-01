@@ -64,17 +64,28 @@ export default function AppointmentsTab({ onOpenConversation, onNewAppointment }
         }
     }
 
-    function getServiceLabel(appt) {
-        if (!appt.appointment_services?.length) {
-            return '—';
-        }
+function getServiceLabel(appt) {
+  const items = appt.appointment_services || [];
 
-        return appt.appointment_services
-            .map(s => s.services?.name)
-            .filter(Boolean)
-            .join(' + ');
-    }
+  const combo =
+    items
+      .flatMap(i => i.services?.service_combo_items || [])
+      .map(i => i.service_combos)
+      .filter(Boolean)[0] || null;
 
+ if (combo) {
+  return `Combo: ${combo.name}`;
+}
+
+  return items
+    .map(s => s.services?.name)
+    .filter(Boolean)
+    .join(' + ') || '—';
+}
+
+    function hasCombo(appt) {
+  return Boolean(appt.combo_id);
+}
 
     /* ---------------- data load ---------------- */
 
@@ -139,6 +150,12 @@ export default function AppointmentsTab({ onOpenConversation, onNewAppointment }
                 <div className="font-medium">
                     {appt.customers?.name || appt.customers?.phone}
                 </div>
+               {hasCombo(appt) && (
+  <div className="inline-block mt-0.5 mb-0.5 px-2 py-0.5 text-xs rounded bg-purple-100 text-purple-700">
+    {getServiceLabel(appt)}
+  </div>
+)}
+
 
                 <div className="text-gray-600">
                     {getServiceLabel(appt)}

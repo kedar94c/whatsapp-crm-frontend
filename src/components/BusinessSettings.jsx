@@ -5,6 +5,9 @@ import { fetchServices } from "../api";
 import AddServiceModal from './AddServiceModal';
 import EditServiceModal from "./editServiceMOdal";
 import { updateService } from "../api";
+import { fetchServiceCombos } from '../api';
+import AddServiceComboModal from "./AddServiceComboModal";
+
 
 const TABS = {
     APPOINTMENTS: "appointments",
@@ -24,6 +27,9 @@ export default function BusinessSettings({ onBack }) {
     const [services, setServices] = useState([]);
     const [showAddService, setShowAddService] = useState(false); // ADD THIS LINE
     const [editingService, setEditingService] = useState(null);
+    const [combos, setCombos] = useState([]);
+    const [showAddCombo, setShowAddCombo] = useState(false);
+
 
 
 
@@ -59,6 +65,22 @@ export default function BusinessSettings({ onBack }) {
             .catch(() => setServices([]));
     }, [activeTab]);
 
+    useEffect(() => {
+        if (activeTab !== TABS.SERVICES) return;
+
+        Promise.all([
+            fetchServices(),
+            fetchServiceCombos()
+        ])
+            .then(([servicesData, combosData]) => {
+                setServices(servicesData || []);
+                setCombos(combosData || []);
+            })
+            .catch(() => {
+                setServices([]);
+                setCombos([]);
+            });
+    }, [activeTab]);
 
     return (
         <div className="flex flex-col h-full min-h-0 w-full max-w-full overflow-x-hidden">
@@ -270,6 +292,31 @@ export default function BusinessSettings({ onBack }) {
                         >
                             + Add Service
                         </button>
+                        <div className="bg-white border rounded p-4">
+                            <div className="font-medium mb-3">Service Combos</div>
+
+                        {(combos || []).map(combo => (
+  <div key={combo.id} className="py-2 border-b">
+    <div className="text-sm font-medium">{combo.name}</div>
+
+    <div className="text-xs text-gray-500">
+      {(combo.service_combo_items || [])
+        .map(i => i.services?.name)
+        .filter(Boolean)
+        .join(' + ')}
+    </div>
+  </div>
+))}
+
+
+                            <button
+                                className="mt-4 w-full border border-dashed rounded py-2 text-sm text-blue-600"
+                                onClick={() => setShowAddCombo(true)}
+                            >
+                                + Add Combo
+                            </button>
+                        </div>
+
 
                     </div>
                 )}
@@ -294,6 +341,14 @@ export default function BusinessSettings({ onBack }) {
                     />
                 )}
 
+                {showAddCombo && (
+                    <AddServiceComboModal
+                        onClose={() => setShowAddCombo(false)}
+                        onCreated={combo =>
+                            setCombos(prev => [...prev, combo])
+                        }
+                    />
+                )}
 
 
                 {activeTab === TABS.TEAM && (

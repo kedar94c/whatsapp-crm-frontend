@@ -161,3 +161,18 @@ export async function updateService(id, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+/* =========================
+   SERVICES & COMBOS
+========================= */
+
+export async function createServiceCombo(payload) {
+  return authFetch('/service-combos', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchServiceCombos() {
+  return authFetch('/service-combos');
+}

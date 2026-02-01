@@ -8,6 +8,8 @@ import {
 import { fetchAvailability } from "../api";
 import toast from "react-hot-toast";
 import { fetchServices } from "../api";
+import { fetchServiceCombos } from "../api";
+
 
 
 
@@ -31,6 +33,11 @@ export default function AppointmentModal({
     (sum, s) => sum + s.duration_minutes,
     0
   );
+  const [combos, setCombos] = useState([]);
+  const [selectedCombo, setSelectedCombo] = useState(null);
+  const disableServiceEditing = isReschedule;
+
+
 
 
 
@@ -184,7 +191,24 @@ export default function AppointmentModal({
     setSelectedSlot(existingSlotMinutes);
   }, [isReschedule, existingSlotMinutes]);
 
-if (!selectedServices) {
+  useEffect(() => {
+  fetchServiceCombos()
+    .then(setCombos)
+    .catch(() => setCombos([]));
+}, []);
+
+function selectCombo(combo) {
+  setSelectedCombo(combo);
+  setSelectedServices(
+    combo.service_combo_items.map(i => ({
+      id: i.service_id,
+      name: i.services.name,
+      duration_minutes: i.services.duration_minutes,
+    }))
+  );
+}
+
+if (selectedServices.length === 0) {
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/40">
       <div className="bg-white w-full rounded-t-xl p-4">
@@ -265,6 +289,42 @@ if (!selectedServices) {
           />
         </div>
 
+        {/* Combo selection */}
+{combos.length > 0 && (
+  <div className="mb-4">
+    <label className="text-sm font-medium block mb-1">
+      Service Combo (optional)
+    </label>
+
+    <select
+     disabled={disableServiceEditing}
+      value={selectedCombo?.id || ""}
+      onChange={e => {
+        const combo = combos.find(c => c.id === e.target.value) || null;
+        setSelectedCombo(combo);
+
+        // 🔒 lock services when combo selected
+        if (combo) {
+          setSelectedServices(
+            combo.service_combo_items.map(i => i.services)
+          );
+        } else {
+          setSelectedServices([]);
+        }
+      }}
+      className="w-full border rounded px-3 py-2 text-sm"
+    >
+      <option value="">No combo</option>
+      {combos.map(combo => (
+        <option key={combo.id} value={combo.id}>
+          {combo.name}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
+
+
         {/* Service selection */}
         <div className="mb-4">
           <label className="text-sm font-medium block mb-1">
@@ -272,6 +332,7 @@ if (!selectedServices) {
           </label>
 
           <select
+          disabled={disableServiceEditing || !!selectedCombo}
             value={selectedServices[0]?.id || ""}
             onChange={e => {
               const service = services.find(s => s.id === e.target.value);
@@ -285,6 +346,16 @@ if (!selectedServices) {
               </option>
             ))}
           </select>
+{selectedCombo && (
+  <p className="text-xs text-gray-500 mt-1">
+    Services are locked because a combo is selected
+  </p>
+)}
+{disableServiceEditing && (
+  <p className="text-xs text-gray-500 mt-1">
+    Services cannot be changed while rescheduling
+  </p>
+)}
 
 
         </div>
@@ -342,14 +413,17 @@ if (!selectedServices) {
 
                else {
   await createAppointment({
-    phone,
-    name,
-    services: selectedServices.map(s => ({
-      service_id: s.id,
-      duration_minutes: s.duration_minutes,
-    })),
-    appointment_utc_time: appointmentUtcTime,
-  });
+  phone,
+  name,
+  combo_id: selectedCombo?.id || null, // ⭐ THIS LINE
+  services: selectedServices.map(s => ({
+    service_id: s.id,
+    duration_minutes: s.duration_minutes,
+  })),
+  duration_minutes: totalDurationMinutes,
+  appointment_utc_time: appointmentUtcTime,
+});
+
   toast.success("Appointment created");
 }
 
