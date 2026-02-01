@@ -126,8 +126,15 @@ export async function fetchAppointmentSettings() {
   return authFetch('/businesses/settings/appointments');
 }
 
-export async function fetchAvailability(date, excludeAppointmentId) {
-  const params = new URLSearchParams({ date });
+export async function fetchAvailability(
+  date,
+  duration_minutes,
+  excludeAppointmentId
+) {
+  const params = new URLSearchParams({
+    date,
+    duration_minutes: String(duration_minutes),
+  });
 
   if (excludeAppointmentId) {
     params.append("excludeAppointmentId", excludeAppointmentId);

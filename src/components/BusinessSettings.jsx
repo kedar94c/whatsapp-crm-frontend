@@ -7,6 +7,7 @@ import EditServiceModal from "./editServiceMOdal";
 import { updateService } from "../api";
 import { fetchServiceCombos } from '../api';
 import AddServiceComboModal from "./AddServiceComboModal";
+import toast from "react-hot-toast";
 
 
 const TABS = {
@@ -51,12 +52,12 @@ export default function BusinessSettings({ onBack }) {
 
     useEffect(() => {
         if (!business?.appointment_settings) return;
+        console.log('Syncing max appointments:', business.appointment_settings.max_appointments_per_slot);
 
         setMaxAppointmentsPerSlot(
             business.appointment_settings.max_appointments_per_slot ?? 1
         );
-    }, [business]);
-
+    }, [business?.appointment_settings?.max_appointments_per_slot]);
     useEffect(() => {
         if (activeTab !== TABS.SERVICES) return;
 
@@ -210,7 +211,8 @@ export default function BusinessSettings({ onBack }) {
 
                                     const updated = await updateAppointmentSettings(payload);
                                     setAppointmentSettings(updated);
-                                    alert('Settings saved');
+                                    toast.success("Settings saved");
+                                   // alert('Settings saved');
                                 } catch (err) {
                                     console.error('SAVE SETTINGS ERROR:', err);
                                     alert('Failed to save settings');

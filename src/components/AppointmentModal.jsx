@@ -71,36 +71,36 @@ export default function AppointmentModal({
     }).format(utcDate);
   }
 
-  function generateSlots(startHour, endHour, duration) {
-    const slots = [];
-    let minutes = localHourToUtcMinutes(
-      startHour,
-      0,
-      business.timezone,
-      selectedDate
-    );
+function generateSlots(startHour, endHour, duration) {
+  const slots = [];
 
-    const endMinutes = localHourToUtcMinutes(
-      endHour,
-      0,
-      business.timezone,
-      selectedDate
-    );
+  let minutes = localHourToUtcMinutes(
+    startHour,
+    0,
+    business.timezone,
+    selectedDate
+  );
 
-    while (minutes + duration <= endMinutes) {
-      const booked = bookedCounts[minutes] || 0;
+  const endMinutes = localHourToUtcMinutes(
+    endHour,
+    0,
+    business.timezone,
+    selectedDate
+  );
 
-      slots.push({
-        startMinutes: minutes,
-        label: formatMinutesToLocalTime(minutes, business.timezone),
-        available: booked < maxPerSlot,
-      });
+  while (minutes + duration <= endMinutes) {
+    slots.push({
+      startMinutes: minutes,
+      label: formatMinutesToLocalTime(minutes, business.timezone),
+      available: bookedCounts[minutes] !== false,
+    });
 
-      minutes += duration;
-    }
-
-    return slots;
+    // 🔑 CRITICAL FIX
+    minutes += 15;
   }
+
+  return slots;
+}
 
   function localHourToUtcMinutes(hour, minute, timezone, date) {
     const [y, m, d] = date.split("-").map(Number);
@@ -154,24 +154,18 @@ export default function AppointmentModal({
   }, []);
 
 
-  useEffect(() => {
-    setSelectedSlot(null);
-  }, [selectedDate, selectedServices]);
+useEffect(() => {
+  if (!selectedDate || totalDurationMinutes <= 0) return;
 
-  useEffect(() => {
-    if (!selectedDate) return;
+  fetchAvailability(
+    selectedDate,
+    totalDurationMinutes,
+    isReschedule ? appointment?.id : null
+  )
+    .then(res => setAvailability(res.slots || {}))
+    .catch(() => setAvailability({}));
+}, [selectedDate, totalDurationMinutes, isReschedule, appointment?.id]);
 
-    fetchAvailability(
-      selectedDate,
-      isReschedule ? appointment?.id : null
-    )
-      .then(res => {
-        setAvailability(res.slots || {});
-      })
-      .catch(() => {
-        setAvailability({});
-      });
-  }, [selectedDate, isReschedule, appointment?.id]);
 
 
 
